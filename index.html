@@ -2,80 +2,115 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Setlist Studio V5.0 - Mobile Optimized</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Setlist Studio V5.1 - Adaptive Fit</title>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root { --bg: #f1f5f9; --card: #ffffff; --primary: #2563eb; --accent: #f59e0b; --danger: #ef4444; --text-main: #000000; --text-sub: #64748b; }
         
-        /* スマホの高さ問題に対応 */
-        html, body { height: 100%; margin: 0; overflow: hidden; }
-        body { font-family: sans-serif; background: var(--bg); display: flex; flex-direction: column; color: #1e293b; }
+        /* 画面全体の固定設定 */
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            overflow: hidden; /* 全体のスクロールを禁止 */
+            position: fixed; /* iPhoneのバウンス（揺れ）防止 */
+            width: 100%;
+        }
+        body { 
+            font-family: sans-serif; 
+            background: var(--bg); 
+            display: flex; 
+            flex-direction: column; 
+            /* スマホのセーフエリア（ノッチや下のバー）を考慮 */
+            padding-bottom: env(safe-area-inset-bottom);
+        }
         
-        header { background: #1e293b; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        header h1 { font-size: 1.2rem; margin: 0; }
+        header { background: #1e293b; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        header h1 { font-size: 1rem; margin: 0; }
 
-        .main-container { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; flex-direction: column; }
+        /* メインコンテナを画面いっぱいに広げる */
+        .main-container { 
+            display: flex; 
+            flex: 1; 
+            overflow: hidden; 
+            padding: 8px; 
+            gap: 8px; 
+            flex-direction: column; /* スマホは縦 */
+        }
         
-        /* PC時は横並び、スマホ時は縦並び */
         @media (min-width: 768px) {
-            .main-container { flex-direction: row; padding: 20px; gap: 20px; }
+            .main-container { flex-direction: row; padding: 15px; gap: 15px; }
         }
 
-        .column { background: #e2e8f0; border-radius: 12px; display: flex; flex-direction: column; flex: 1; min-height: 0; border: 2px solid #cbd5e1; }
-        .col-header { padding: 10px 15px; font-weight: bold; border-bottom: 2px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .scroll-area { flex: 1; overflow-y: auto; padding: 10px; }
-
-        .song-card { background: white; padding: 12px; margin-bottom: 8px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: grab; display: flex; align-items: center; user-select: none; border: 1px solid transparent; }
-        .song-card:active { cursor: grabbing; border-color: var(--primary); }
+        .column { 
+            background: #e2e8f0; 
+            border-radius: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            flex: 1; /* 親要素に合わせて伸縮 */
+            min-height: 0; /* これがないと縮まない */
+            border: 1px solid #cbd5e1; 
+        }
         
-        .skip-zone { display: flex; align-items: center; width: 30px; margin-right: 10px; border-right: 1px solid #eee; }
-        .skip-toggle { transform: scale(1.3); cursor: pointer; }
-        .song-card.is-skipped { background: #f8fafc; opacity: 0.7; }
+        .col-header { padding: 8px 12px; font-weight: bold; border-bottom: 1px solid #cbd5e1; font-size: 0.9rem; flex-shrink: 0; }
+        
+        /* リスト部分だけをスクロールさせる */
+        .scroll-area { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 8px; 
+            -webkit-overflow-scrolling: touch; /* iPhoneでヌルヌル動くように */
+        }
+
+        .song-card { background: white; padding: 10px; margin-bottom: 6px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; user-select: none; }
+        .song-card.is-skipped { background: #f8fafc; opacity: 0.6; }
+
+        .skip-zone { width: 30px; margin-right: 8px; border-right: 1px solid #eee; text-align: center; }
+        .skip-toggle { transform: scale(1.2); }
 
         .song-main-info { flex: 1; pointer-events: none; }
-        .song-title-row { font-size: 1.1rem; font-weight: bold; color: var(--text-main); }
-        .song-sub-row { font-size: 0.8rem; color: var(--text-sub); }
+        .song-title-row { font-size: 1rem; font-weight: bold; }
+        .song-sub-row { font-size: 0.75rem; color: var(--text-sub); }
         
-        .song-meta-info { pointer-events: none; margin-left: 5px; }
-        .bpm-badge { font-size: 0.7rem; background: #eee; padding: 2px 5px; border-radius: 4px; }
+        #trash-can { background: #fee2e2; border: 2px dashed var(--danger); color: var(--danger); text-align: center; padding: 8px; margin: 4px 8px; border-radius: 6px; font-size: 0.75rem; flex-shrink: 0; }
 
-        #trash-can { background: #fee2e2; border: 2px dashed var(--danger); color: var(--danger); text-align: center; padding: 10px; margin: 5px 10px; border-radius: 8px; font-size: 0.8rem; flex-shrink: 0; }
+        .backup-zone { background: #cbd5e1; padding: 6px; display: flex; gap: 6px; justify-content: center; flex-shrink: 0; }
 
-        .backup-zone { background: #cbd5e1; padding: 8px; display: flex; gap: 8px; justify-content: center; flex-shrink: 0; }
-
-        /* 追加フォームをスマホで押しやすく */
-        .add-form { background: white; padding: 12px; border-top: 1px solid #ccc; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex-shrink: 0; }
+        /* スマホ用：入力フォームをよりコンパクトに */
+        .add-form { 
+            background: white; 
+            padding: 10px; 
+            border-top: 1px solid #ccc; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 6px; 
+            flex-shrink: 0; 
+        }
+        .add-form input { padding: 8px; font-size: 16px; border: 1px solid #ddd; border-radius: 4px; }
         .add-form input[id="new-name"] { grid-column: span 2; }
-        .add-form button { grid-column: span 2; padding: 12px; font-size: 1rem; }
+        .btn-add { grid-column: span 2; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 4px; font-weight: bold; }
 
-        @media (min-width: 768px) {
-            .add-form { grid-template-columns: 2fr 1fr 1fr 1fr auto; }
-            .add-form input[id="new-name"] { grid-column: span 1; }
-            .add-form button { grid-column: span 1; padding: 8px; }
+        .footer-bar { 
+            background: #1e293b; 
+            color: white; 
+            padding: 8px 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-size: 0.9rem; 
+            flex-shrink: 0; 
         }
 
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; /* iOSのズーム防止 */ }
-        
-        .footer-bar { background: #1e293b; color: white; padding: 10px 20px; display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; }
-        @media (min-width: 768px) { .footer-bar { flex-direction: row; justify-content: space-between; } }
-
-        .btn { border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-add { background: var(--primary); color: white; }
-        .btn-print { background: #22c55e; color: white; padding: 8px 12px; font-size: 0.8rem; }
-        .btn-backup { background: #475569; color: white; font-size: 0.7rem; padding: 5px 10px; }
-
-        .no-print { display: block; }
         @media print { .no-print { display: none !important; } .print-area { display: block !important; } }
     </style>
 </head>
 <body>
 
 <header class="no-print">
-    <h1>🎸 SETLIST V5.0</h1>
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <input type="number" id="limit-min" style="width: 50px; padding: 5px;" value="30" onchange="updateTotal()">
-        <button class="btn btn-print" onclick="window.print()">🖨️ 印刷</button>
+    <h1>🎸 SETLIST V5.1</h1>
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <input type="number" id="limit-min" style="width: 45px; padding: 4px;" value="30" onchange="updateTotal()">
+        <button class="btn-print" style="background:#22c55e; color:white; border:none; padding:5px 10px; border-radius:4px;" onclick="window.print()">印刷</button>
     </div>
 </header>
 
@@ -83,10 +118,10 @@
     <div class="column">
         <div class="col-header">📂 マスター</div>
         <div id="master-list" class="scroll-area"></div>
-        <div id="trash-can">🗑️ ここにポイで削除</div>
+        <div id="trash-can">🗑️ 削除</div>
         <div class="backup-zone">
-            <button class="btn btn-backup" onclick="exportData()">📤 保存</button>
-            <button class="btn btn-backup" onclick="document.getElementById('file-input').click()">📥 復元</button>
+            <button class="btn-backup" onclick="exportData()" style="font-size:0.7rem;">📤 保存</button>
+            <button class="btn-backup" onclick="document.getElementById('file-input').click()" style="font-size:0.7rem;">📥 復元</button>
             <input type="file" id="file-input" style="display:none" onchange="importData(event)">
         </div>
         <div class="add-form">
@@ -94,7 +129,7 @@
             <input type="text" id="new-album" placeholder="アルバム">
             <input type="text" id="new-time" placeholder="分:秒">
             <input type="number" id="new-bpm" placeholder="BPM">
-            <button class="btn btn-add" onclick="addNewToMaster()">＋ マスターに追加</button>
+            <button class="btn-add" onclick="addNewToMaster()">＋ マスターに追加</button>
         </div>
     </div>
 
@@ -106,13 +141,13 @@
 
 <div class="footer-bar no-print">
     <div id="total-display">00:00 / 30:00</div>
-    <div id="alert" style="color: #fda4af; font-weight:bold; display:none;">⚠️ 時間オーバー！</div>
+    <div id="alert" style="color: #fda4af; font-weight:bold; display:none;">⚠️</div>
 </div>
 
 <div id="print-view" class="print-area" style="display:none;"></div>
 
 <script>
-    let masterSongs = JSON.parse(localStorage.getItem('master_songs_v5_0')) || [];
+    let masterSongs = JSON.parse(localStorage.getItem('master_songs_v5_1')) || [];
     const masterEl = document.getElementById('master-list');
     const setlistEl = document.getElementById('setlist-area');
 
@@ -134,20 +169,14 @@
         const seconds = (parseInt(parts[0] || 0) * 60) + parseInt(parts[1] || 0);
         
         masterSongs.push({ 
-            id: Date.now().toString(), 
-            name, 
-            album: document.getElementById('new-album').value || 'Other', 
-            time: timeVal, 
-            seconds, 
-            bpm: document.getElementById('new-bpm').value, 
-            isSkip: false 
+            id: Date.now().toString(), name, album: document.getElementById('new-album').value || 'Other', time: timeVal, seconds, bpm: document.getElementById('new-bpm').value, isSkip: false 
         });
         saveAndRender();
         ['new-name', 'new-album', 'new-time', 'new-bpm'].forEach(id => document.getElementById(id).value = "");
     }
 
     function saveAndRender() {
-        localStorage.setItem('master_songs_v5_0', JSON.stringify(masterSongs));
+        localStorage.setItem('master_songs_v5_1', JSON.stringify(masterSongs));
         masterEl.innerHTML = '';
         masterSongs.forEach(s => masterEl.appendChild(createSongCard(s)));
     }
@@ -162,37 +191,29 @@
         div.dataset.album = s.album;
         div.innerHTML = `
             <div class="skip-zone"><input type="checkbox" class="skip-toggle" ${s.isSkip ? 'checked' : ''} onchange="this.closest('.song-card').classList.toggle('is-skipped', this.checked); updateTotal();"></div>
-            <div class="song-main-info">
-                <div class="song-title-row">${s.name} (${s.time})</div>
-                <div class="song-sub-row">💿 ${s.album}</div>
-            </div>
-            <div class="song-meta-info">${s.bpm ? `<div class="bpm-badge">BPM:${s.bpm}</div>` : ''}</div>
+            <div class="song-main-info"><div class="song-title-row">${s.name}</div><div class="song-sub-row">💿 ${s.album} (${s.time})</div></div>
+            <div class="song-meta-info">${s.bpm ? `<div style="font-size:0.6rem; background:#eee; padding:2px; border-radius:3px;">BPM:${s.bpm}</div>` : ''}</div>
         `;
         return div;
     }
 
     function exportData() {
         const blob = new Blob([JSON.stringify(masterSongs)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `setlist_backup.json`;
-        a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `setlist_backup.json`; a.click();
     }
 
     function importData(event) {
-        const reader = new FileReader();
-        reader.onload = (e) => { masterSongs = JSON.parse(e.target.result); saveAndRender(); };
+        const reader = new FileReader(); reader.onload = (e) => { masterSongs = JSON.parse(e.target.result); saveAndRender(); };
         reader.readAsText(event.target.files[0]);
     }
 
     function updateTotal() {
         let total = 0;
         setlistEl.querySelectorAll('.song-card').forEach(item => { total += parseInt(item.dataset.seconds); });
-        const m = Math.floor(total / 60);
-        const s = total % 60;
+        const m = Math.floor(total / 60); const s = total % 60;
         const limitMin = document.getElementById('limit-min').value;
         document.getElementById('total-display').innerText = `${m}:${s.toString().padStart(2, '0')} / ${limitMin}:00`;
-        document.getElementById('alert').style.display = total > (limitMin * 60) ? 'block' : 'none';
+        document.getElementById('alert').style.display = total > (limitMin * 60) ? 'inline' : 'none';
     }
 
     saveAndRender();
