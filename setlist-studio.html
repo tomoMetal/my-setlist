@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Setlist Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f0e8;
+    --yellow: #f5c518;
+    --red: #e63946;
+    --gray: #2a2a2a;
+    --gray2: #3a3a3a;
+    --gray3: #555;
+    --text-muted: #888;
+    --border: #333;
+    --green: #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--black); color: var(--white); font-family: 'Noto Sans JP', sans-serif; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+
+  header {
+    background: var(--black);
+    border-bottom: 2px solid var(--yellow);
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 56px;
+    flex-shrink: 0;
+  }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 3px; color: var(--yellow); }
+  .logo span { color: var(--white); }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+
+  .tabs { display: flex; background: var(--gray); border-radius: 6px; padding: 3px; gap: 2px; }
+  .tab {
+    border: none; background: none; color: var(--text-muted);
+    padding: 6px 16px; border-radius: 4px; font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: 'Noto Sans JP', sans-serif; transition: all 0.15s;
+  }
+  .tab.active { background: var(--yellow); color: var(--black); font-weight: 700; }
+
+  .btn-print {
+    background: none; border: 1.5px solid var(--yellow); color: var(--yellow);
+    padding: 6px 16px; border-radius: 6px; font-size: 13px;
+    font-family: 'Noto Sans JP', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-print:hover { background: var(--yellow); color: var(--black); }
+
+  .main { flex: 1; overflow: hidden; position: relative; }
+  .panel { position: absolute; inset: 0; overflow: hidden; padding: 16px 20px; display: none; flex-direction: column; gap: 12px; }
+  .panel.active { display: flex; }
+
+  /* ライブ情報 */
+  .live-info-wrap {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .live-in {
+    background: var(--gray2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: var(--white);
+    font-family: 'Noto Sans JP', sans-serif;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  .live-in::placeholder { color: var(--gray3); }
+  .live-in:focus { outline: none; border-color: var(--yellow); }
+  .date-picker-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--gray2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    font-size: 13px;
+    color: var(--white);
+    user-select: none;
+  }
+  .date-picker-wrap:hover { border-color: var(--yellow); }
+  #date-display-text { flex: 1; white-space: nowrap; }
+  #date-display-text.placeholder { color: var(--gray3); }
+  .date-cal-icon { opacity: 0.5; font-size: 14px; flex-shrink: 0; }
+
+  /* セットリストパネル */
+  .set-toolbar { display: flex; justify-content: space-between; align-items: center; }
+  .set-toolbar-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--text-muted); letter-spacing: 1px; }
+  .set-toolbar-actions { display: flex; gap: 6px; }
+  .btn-mc, .btn-clear {
+    border: 1.5px solid var(--gray3); background: none; color: var(--text-muted);
+    padding: 5px 14px; border-radius: 6px; font-size: 12px;
+    font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-mc:hover { border-color: var(--yellow); color: var(--yellow); }
+  .btn-clear:hover { border-color: var(--red); color: var(--red); }
+
+  .setlist-wrap { background: var(--gray); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; flex: 1; }
+  .setlist-header {
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text-muted); background: var(--gray2);
+  }
+
+  .song-row {
+    display: flex; align-items: center; gap: 12px; padding: 11px 16px;
+    border-bottom: 1px solid var(--border); cursor: default; transition: background 0.1s;
+  }
+  .song-row:last-child { border-bottom: none; }
+  .song-row:hover { background: rgba(245,197,24,0.05); }
+  .song-row.drag-over { border-top: 2px solid var(--yellow); }
+  .song-row.dragging { opacity: 0.3; }
+
+  .drag-handle { color: var(--gray3); cursor: grab; font-size: 14px; user-select: none; flex-shrink: 0; }
+  .drag-handle:active { cursor: grabbing; }
+  .song-num { width: 24px; text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--yellow); flex-shrink: 0; }
+  .song-name { flex: 1; font-size: 14px; font-weight: 500; }
+  .song-dur { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+  .btn-rm { background: none; border: none; color: var(--gray3); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; transition: color 0.15s; }
+  .btn-rm:hover { color: var(--red); }
+
+  .mc-row {
+    display: flex; align-items: center; gap: 12px; padding: 8px 16px;
+    border-bottom: 1px solid var(--border); background: rgba(245,197,24,0.06);
+  }
+  .mc-row:last-child { border-bottom: none; }
+  .mc-row.drag-over { border-top: 2px solid var(--yellow); }
+  .mc-row.dragging { opacity: 0.3; }
+  .mc-label { flex: 1; font-size: 12px; color: var(--yellow); font-weight: 700; letter-spacing: 2px; }
+  .mc-input {
+    width: 48px; background: var(--gray2); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--white); font-size: 12px; text-align: center;
+    padding: 3px 6px; font-family: 'Noto Sans JP', sans-serif;
+  }
+  .empty-hint { padding: 40px 16px; text-align: center; font-size: 13px; color: var(--gray3); line-height: 2; }
+
+  /* ステータスバー */
+  .status-bar { background: var(--gray); border-top: 2px solid var(--border); padding: 10px 20px; flex-shrink: 0; }
+  .time-track { height: 5px; background: var(--gray2); border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+  .time-fill { height: 100%; border-radius: 3px; transition: width 0.3s, background 0.3s; background: var(--yellow); }
+  .status-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
+  .time-big { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--white); letter-spacing: 1px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; }
+  .badge-ok { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .badge-warn { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .badge-over { background: rgba(230,57,70,0.15); color: var(--red); }
+  .limit-in {
+    width: 36px; background: none; border: none; border-bottom: 1px solid var(--gray3);
+    color: var(--white); font-size: 14px; text-align: center;
+    font-family: 'Bebas Neue', sans-serif; padding: 0 2px;
+  }
+  .limit-in:focus { outline: none; border-bottom-color: var(--yellow); }
+
+  /* マスターパネル */
+  .add-form { background: var(--gray); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .form-row { display: flex; gap: 8px; }
+  .form-in {
+    flex: 1; background: var(--gray2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 9px 12px; font-size: 14px; color: var(--white);
+    font-family: 'Noto Sans JP', sans-serif; transition: border-color 0.15s;
+  }
+  .form-in::placeholder { color: var(--gray3); }
+  .form-in:focus { outline: none; border-color: var(--yellow); }
+  .btn-register {
+    width: 100%; padding: 10px; background: var(--yellow); color: var(--black);
+    border: none; border-radius: 6px; font-size: 14px; font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-register:hover { opacity: 0.85; }
+
+  .master-wrap { background: var(--gray); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .master-header {
+    background: var(--gray2); padding: 10px 16px; border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;
+  }
+  .master-sort { display: flex; gap: 4px; }
+  .sort-btn {
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+    padding: 2px 8px; border-radius: 4px; font-size: 11px;
+    font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.15s;
+  }
+  .sort-btn.active { border-color: var(--yellow); color: var(--yellow); }
+  .sort-btn:hover { color: var(--white); }
+
+  .master-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    border-bottom: 1px solid var(--border); transition: background 0.1s;
+  }
+  .master-row:last-child { border-bottom: none; }
+  .master-row:hover { background: rgba(255,255,255,0.03); }
+  .master-info { flex: 1; }
+  .master-name { font-size: 14px; font-weight: 500; }
+  .master-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .in-set-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--yellow); margin-right: 5px; vertical-align: middle; }
+
+  .btn-add-set {
+    background: none; border: 1.5px solid var(--yellow); color: var(--yellow);
+    padding: 5px 12px; border-radius: 6px; font-size: 12px;
+    font-family: 'Noto Sans JP', sans-serif; font-weight: 700; cursor: pointer;
+    transition: all 0.2s; white-space: nowrap; min-width: 72px; text-align: center;
+  }
+  .btn-add-set:hover { background: var(--yellow); color: var(--black); }
+  .btn-add-set.flash { background: rgba(34,197,94,0.2); border-color: var(--green); color: var(--green); }
+
+  .btn-del-master {
+    background: none; border: none; color: var(--gray3); font-size: 18px;
+    cursor: pointer; line-height: 1; transition: color 0.15s; padding: 0 2px;
+  }
+  .btn-del-master:hover { color: var(--red); }
+
+  .btn-edit-master {
+    background: none; border: none; color: var(--gray3); cursor: pointer;
+    font-size: 14px; padding: 0 3px; transition: color 0.15s; line-height: 1;
+  }
+  .btn-edit-master:hover { color: var(--white); }
+  .master-row.editing { background: rgba(245,197,24,0.06); }
+  .master-edit-fields { flex: 1; display: flex; gap: 6px; min-width: 0; }
+  .master-edit-in {
+    flex: 1; min-width: 0; background: var(--gray2); border: 1px solid var(--yellow);
+    border-radius: 4px; padding: 5px 8px; font-size: 13px; color: var(--white);
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+  .master-edit-in:focus { outline: none; box-shadow: 0 0 0 2px rgba(245,197,24,0.2); }
+  .btn-edit-save {
+    background: none; border: none; color: var(--green); cursor: pointer;
+    font-size: 18px; font-weight: 700; padding: 0 3px; transition: opacity 0.15s;
+  }
+  .btn-edit-save:hover { opacity: 0.7; }
+  .btn-edit-cancel {
+    background: none; border: none; color: var(--gray3); cursor: pointer;
+    font-size: 18px; padding: 0 3px; transition: color 0.15s;
+  }
+  .btn-edit-cancel:hover { color: var(--red); }
+
+  #master-body { flex: 1; min-height: 0; overflow-y: auto; }
+  .io-row { display: flex; gap: 8px; padding: 10px 16px; background: var(--gray2); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .io-btn {
+    flex: 1; background: none; border: 1px solid var(--border); color: var(--text-muted);
+    padding: 6px; border-radius: 6px; font-size: 12px;
+    font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.15s;
+  }
+  .io-btn:hover { border-color: var(--gray3); color: var(--white); }
+
+  /* お気に入り */
+  .favorites-wrap {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .fav-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .fav-list { display: flex; gap: 6px; flex: 1; align-items: center; flex-wrap: nowrap; min-width: 0; }
+  .fav-slot {
+    padding: 5px 10px; border-radius: 6px; font-size: 12px;
+    font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.15s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;
+    border: 1.5px dashed var(--gray3); background: none; color: var(--gray3);
+  }
+  .fav-slot:hover { border-color: var(--yellow); color: var(--yellow); }
+  .fav-slot.saved {
+    border-style: solid; border-color: rgba(245,197,24,0.5);
+    color: var(--yellow); background: rgba(245,197,24,0.08);
+  }
+  .fav-slot.saved:hover { background: var(--yellow); color: var(--black); border-color: var(--yellow); }
+  .fav-item { display: flex; align-items: center; }
+  .fav-update {
+    background: none; border: none; color: var(--gray3); cursor: pointer;
+    font-size: 13px; padding: 0 3px; transition: color 0.15s; line-height: 1;
+  }
+  .fav-update:hover { color: var(--white); }
+  .fav-del-btn {
+    background: none; border: none; color: var(--gray3); cursor: pointer;
+    font-size: 15px; padding: 0 3px; transition: color 0.15s; line-height: 1;
+  }
+  .fav-del-btn:hover { color: var(--red); }
+
+  /* 貼り付け一括登録 */
+  .paste-wrap {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .paste-toggle {
+    width: 100%; display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 16px; background: none; border: none; color: var(--text-muted);
+    font-size: 13px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: color 0.15s;
+  }
+  .paste-toggle:hover { color: var(--white); }
+  .paste-toggle.open { color: var(--yellow); border-bottom: 1px solid var(--border); }
+  .paste-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .paste-hint { font-size: 12px; color: var(--text-muted); line-height: 1.7; }
+  .paste-hint strong { color: var(--yellow); }
+  .paste-area {
+    width: 100%; height: 110px; background: var(--gray2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px; font-size: 13px; color: var(--white);
+    font-family: 'Noto Sans JP', sans-serif; resize: vertical; transition: border-color 0.15s;
+  }
+  .paste-area:focus { outline: none; border-color: var(--yellow); }
+  .paste-area::placeholder { color: var(--gray3); }
+  .paste-preview { font-size: 12px; color: var(--text-muted); line-height: 1.8; }
+  .paste-preview .prev-count { color: var(--white); font-weight: 700; }
+  .btn-bulk {
+    display: none; padding: 9px; background: var(--yellow); color: var(--black);
+    border: none; border-radius: 6px; font-size: 14px; font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-bulk:hover { opacity: 0.85; }
+
+  /* ▲▼ 移動ボタン（PC では非表示、スマホで表示） */
+  .move-btns { display: none; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .btn-move {
+    background: none; border: none; color: var(--gray3); cursor: pointer;
+    font-size: 10px; line-height: 1.4; padding: 0 2px; transition: color 0.15s;
+  }
+  .btn-move:hover { color: var(--yellow); }
+  .btn-move:disabled { opacity: 0.2; cursor: default; }
+
+  /* ===== スマホ対応 (640px以下) ===== */
+  @media (max-width: 640px) {
+    /* ヘッダー */
+    header { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+    .logo { font-size: 22px; }
+    .header-right { width: 100%; }
+    .btn-print { display: none; }
+    .tabs { flex: 1; }
+    .tab { flex: 1; text-align: center; padding: 8px 6px; font-size: 12px; }
+
+    /* ライブ情報 */
+    .live-info-wrap { grid-template-columns: 1fr; }
+
+    /* お気に入り */
+    .fav-list { flex-wrap: wrap; }
+    .fav-slot { max-width: none; }
+
+    /* セットリスト行：ドラッグ非表示、▲▼表示 */
+    .drag-handle { display: none; }
+    .move-btns { display: flex; }
+    .song-row, .mc-row { padding: 13px 12px; gap: 10px; }
+    .song-num { font-size: 20px; }
+
+    /* マスター行 */
+    .master-row { padding: 12px 12px; }
+    .btn-add-set { padding: 7px 10px; font-size: 11px; }
+    .btn-edit-master { font-size: 13px; }
+
+    /* 登録フォーム：縦並び */
+    .add-form .form-row { flex-direction: column; }
+    .add-form .form-in { width: 100% !important; flex: 1 !important; }
+
+    /* 一括貼り付けはスマホでは非表示 */
+    .paste-wrap { display: none; }
+
+    /* ソートボタン：小さく */
+    .sort-btn { font-size: 11px; padding: 2px 6px; }
+
+    /* ステータスバー：時間を大きく */
+    .status-bar { padding: 12px 16px; }
+    .time-big { font-size: 32px; }
+    .time-track { height: 7px; margin-bottom: 10px; }
+  }
+
+  /* 印刷 */
+  @media print {
+    .no-print { display: none !important; }
+    body { background: white; color: black; overflow: auto; }
+    header { display: none; }
+    .main { overflow: visible; }
+    .panel { position: static; overflow: visible; display: flex !important; }
+    .status-bar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="no-print">
+  <div class="logo">Setlist<span>Studio</span></div>
+  <div class="header-right">
+    <button class="btn-print" onclick="doPrint()">🖨 印刷</button>
+    <div class="tabs">
+      <button class="tab active" id="tab-set" onclick="switchTab('set')">セットリスト</button>
+      <button class="tab" id="tab-master" onclick="switchTab('master')">楽曲登録</button>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- セットリストパネル -->
+  <div class="panel active" id="panel-set">
+
+    <!-- ライブ情報 -->
+    <div class="live-info-wrap">
+      <input class="live-in" type="text" id="live-band" placeholder="バンド名" oninput="saveLiveInfo()">
+      <input class="live-in" type="text" id="live-venue" placeholder="会場名" oninput="saveLiveInfo()">
+      <div class="date-picker-wrap" onclick="document.getElementById('live-date').showPicker()">
+        <span id="date-display-text" class="placeholder">日付を選択</span>
+        <span class="date-cal-icon">🗓</span>
+        <input type="date" id="live-date" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;" oninput="saveLiveInfo();updateDow()">
+      </div>
+    </div>
+
+    <!-- お気に入り -->
+    <div class="favorites-wrap">
+      <span class="fav-title">⭐ FAV</span>
+      <div class="fav-list" id="fav-list"></div>
+    </div>
+
+    <div class="set-toolbar">
+      <span class="set-toolbar-title">今日のセットリスト</span>
+      <div class="set-toolbar-actions">
+        <button class="btn-mc" onclick="insertMC()">＋ MC 挿入</button>
+        <button class="btn-clear" onclick="clearSet()">クリア</button>
+      </div>
+    </div>
+
+    <div class="setlist-wrap">
+      <div class="setlist-header">
+        <span>曲順（ドラッグで並び替え）</span>
+        <span id="count-badge">—</span>
+      </div>
+      <div id="setlist-body">
+        <div class="empty-hint">「楽曲登録」タブから曲を追加してください<br>MCは上のボタンで任意の位置に挿入できます</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- マスターパネル -->
+  <div class="panel" id="panel-master">
+    <div class="add-form">
+      <div class="form-row">
+        <input class="form-in" type="text" id="inp-name" placeholder="曲名（必須）" onkeydown="formKey(event)">
+      </div>
+      <div class="form-row">
+        <input class="form-in" type="text" id="inp-album" placeholder="アルバム / 備考" onkeydown="formKey(event)">
+        <input class="form-in" type="text" id="inp-time" placeholder="3:45" style="width:100px;flex:none;" title="分:秒" onkeydown="formKey(event)">
+      </div>
+      <button class="btn-register" onclick="addMaster()">＋ 楽曲を登録</button>
+    </div>
+
+    <!-- 一括貼り付け -->
+    <div class="paste-wrap">
+      <button class="paste-toggle" id="paste-toggle" onclick="togglePaste()">
+        <span>📋 Excelからまとめて貼り付け</span>
+        <span id="paste-arrow">▼</span>
+      </button>
+      <div class="paste-body" id="paste-body" style="display:none">
+        <div class="paste-hint">
+          Excelで列を選択 → コピー（Ctrl+C）→ 下のエリアに貼り付け（Ctrl+V）<br>
+          列の順番: <strong>曲名</strong>（必須）&ensp;/&ensp;<strong>アルバム</strong>（省略可）&ensp;/&ensp;<strong>時間</strong> 例: 3:45（省略可）
+        </div>
+        <textarea class="paste-area" id="paste-area" placeholder="ここに貼り付け..." oninput="previewPaste()"></textarea>
+        <div class="paste-preview" id="paste-preview"></div>
+        <button class="btn-bulk" id="btn-bulk" onclick="bulkRegister()">一括登録</button>
+      </div>
+    </div>
+
+    <div class="master-wrap">
+      <div class="master-header">
+        <span>登録済み楽曲 &nbsp;<span id="master-count" style="font-weight:700;color:var(--white)">0曲</span></span>
+        <div class="master-sort">
+          <button class="sort-btn active" id="sort-default" onclick="setSort('default')">登録順</button>
+          <button class="sort-btn" id="sort-name" onclick="setSort('name')">名前順</button>
+          <button class="sort-btn" id="sort-album" onclick="setSort('album')">アルバム順</button>
+          <button class="sort-btn" id="sort-time" onclick="setSort('time')">時間順</button>
+        </div>
+      </div>
+      <div id="master-body">
+        <div class="empty-hint">まだ楽曲が登録されていません</div>
+      </div>
+      <div class="io-row">
+        <button class="io-btn" onclick="exportData()">📤 エクスポート</button>
+        <button class="io-btn" onclick="document.getElementById('file-in').click()">📥 インポート</button>
+        <input type="file" id="file-in" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar no-print">
+  <div class="time-track"><div class="time-fill" id="time-fill" style="width:0%"></div></div>
+  <div class="status-row">
+    <div style="display:flex;align-items:baseline;gap:6px;">
+      <span class="time-big" id="time-used">0:00</span>
+      <span style="font-size:13px;color:var(--gray3);">/ <input class="limit-in" type="number" id="limit-in" value="30" min="1" oninput="updateStatus()"> 分</span>
+    </div>
+    <span id="status-badge"></span>
+  </div>
+</div>
+
+<script>
+let master = JSON.parse(localStorage.getItem('ss_master_v1') || '[]');
+let setlist = JSON.parse(localStorage.getItem('ss_setlist_v1') || '[]');
+let liveInfo = JSON.parse(localStorage.getItem('ss_liveinfo_v1') || '{}');
+let favorites = JSON.parse(localStorage.getItem('ss_favorites_v1') || '[null,null,null,null,null]');
+let dragIdx = null;
+let sortMode = 'default';
+
+const DOW = ['日','月','火','水','木','金','土'];
+function updateDow() {
+  const v = document.getElementById('live-date').value;
+  const el = document.getElementById('date-display-text');
+  if (!v) {
+    el.textContent = '日付を選択';
+    el.classList.add('placeholder');
+    return;
+  }
+  const dow = DOW[new Date(v + 'T00:00:00').getDay()];
+  el.textContent = v.replace(/-/g, '/') + '（' + dow + '）';
+  el.classList.remove('placeholder');
+}
+
+/* ---- 初期化 ---- */
+function init() {
+  if (liveInfo.band) document.getElementById('live-band').value = liveInfo.band;
+  if (liveInfo.venue) document.getElementById('live-venue').value = liveInfo.venue;
+  if (liveInfo.date) document.getElementById('live-date').value = liveInfo.date;
+  else document.getElementById('live-date').value = new Date().toISOString().slice(0,10);
+  if (liveInfo.limit) document.getElementById('limit-in').value = liveInfo.limit;
+  updateDow();
+  renderFav();
+  renderMaster();
+  renderSet();
+}
+
+/* ---- お気に入り ---- */
+function saveFavorites() {
+  localStorage.setItem('ss_favorites_v1', JSON.stringify(favorites));
+}
+
+function saveFav(idx) {
+  if (setlist.length === 0) { alert('セットリストが空です。'); return; }
+  const def = favorites[idx]?.name || '';
+  const name = prompt('お気に入りの名前を入力してください', def);
+  if (name === null || !name.trim()) return;
+  favorites[idx] = { name: name.trim(), setlist: JSON.parse(JSON.stringify(setlist)) };
+  saveFavorites();
+  renderFav();
+}
+
+function loadFav(idx) {
+  const fav = favorites[idx];
+  if (!fav) return;
+  if (!confirm(`「${fav.name}」を読み込みますか？\n現在のセットリストは置き換えられます。`)) return;
+  setlist = JSON.parse(JSON.stringify(fav.setlist));
+  saveSetlist();
+  renderSet();
+  renderMaster();
+}
+
+function updateFav(idx) {
+  const fav = favorites[idx];
+  if (!fav) return;
+  if (setlist.length === 0) { alert('セットリストが空です。'); return; }
+  if (!confirm(`「${fav.name}」を現在のセットリストで上書きしますか？`)) return;
+  favorites[idx].setlist = JSON.parse(JSON.stringify(setlist));
+  saveFavorites();
+}
+
+function deleteFav(idx) {
+  if (!confirm(`「${favorites[idx].name}」を削除しますか？`)) return;
+  favorites[idx] = null;
+  saveFavorites();
+  renderFav();
+}
+
+function renderFav() {
+  document.getElementById('fav-list').innerHTML = favorites.map((fav, i) => {
+    if (!fav) {
+      return `<button class="fav-slot" onclick="saveFav(${i})" title="現在のセットをここに保存">＋</button>`;
+    }
+    return `<div class="fav-item">
+      <button class="fav-slot saved" onclick="loadFav(${i})" title="読み込む">${esc(fav.name)}</button>
+      <button class="fav-update" onclick="updateFav(${i})" title="現在のセットで上書き">↑</button>
+      <button class="fav-del-btn" onclick="deleteFav(${i})" title="削除">×</button>
+    </div>`;
+  }).join('');
+}
+
+function saveLiveInfo() {
+  liveInfo = {
+    band: document.getElementById('live-band').value.trim(),
+    venue: document.getElementById('live-venue').value.trim(),
+    date: document.getElementById('live-date').value,
+    limit: document.getElementById('limit-in').value
+  };
+  localStorage.setItem('ss_liveinfo_v1', JSON.stringify(liveInfo));
+}
+
+function switchTab(t) {
+  ['set','master'].forEach(id => {
+    document.getElementById('tab-'+id).classList.toggle('active', id===t);
+    document.getElementById('panel-'+id).classList.toggle('active', id===t);
+  });
+  if (t === 'master') renderMaster();
+}
+
+function parseSecs(str) {
+  if (!str) return 0;
+  const s = (str+'').trim();
+  if (!s.includes(':')) {
+    const digits = s.replace(/\D/g, '');
+    if (!digits) return 0;
+    if (digits.length <= 2) return parseInt(digits) * 60;
+    if (digits.length === 3) return parseInt(digits[0]) * 60 + parseInt(digits.slice(1));
+    return parseInt(digits.slice(0, -2)) * 60 + parseInt(digits.slice(-2));
+  }
+  const p = s.split(':');
+  return (parseInt(p[0])||0)*60 + (parseInt(p[1]||0)||0);
+}
+
+function fmt(s) {
+  return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ---- 一括貼り付け ---- */
+let pasteOpen = false;
+
+function togglePaste() {
+  pasteOpen = !pasteOpen;
+  document.getElementById('paste-body').style.display = pasteOpen ? 'flex' : 'none';
+  document.getElementById('paste-toggle').classList.toggle('open', pasteOpen);
+  document.getElementById('paste-arrow').textContent = pasteOpen ? '▲' : '▼';
+  if (pasteOpen) document.getElementById('paste-area').focus();
+}
+
+function isTimeCol(s) {
+  return /^\d+:\d{2}$/.test(s) || /^\d{3,4}$/.test(s);
+}
+
+function parsePasteLines(text) {
+  return text.split(/\r?\n/)
+    .map(l => l.split('\t').map(c => c.trim()))
+    .filter(cols => cols[0]);
+}
+
+function buildSong(cols, idx) {
+  const name = cols[0];
+  let album = '', timeStr = '';
+  if (cols.length === 2) {
+    isTimeCol(cols[1]) ? (timeStr = cols[1]) : (album = cols[1]);
+  } else if (cols.length >= 3) {
+    album = cols[1];
+    timeStr = cols[2];
+  }
+  const secs = parseSecs(timeStr);
+  return { id: (Date.now() + idx) + '', name, album, time: secs ? fmt(secs) : (timeStr || '–'), secs };
+}
+
+function previewPaste() {
+  const text = document.getElementById('paste-area').value;
+  const preview = document.getElementById('paste-preview');
+  const btn = document.getElementById('btn-bulk');
+  const lines = parsePasteLines(text);
+  if (lines.length === 0) { preview.innerHTML = ''; btn.style.display = 'none'; return; }
+
+  const songs = lines.map((c, i) => buildSong(c, i));
+  const listHtml = songs.slice(0, 6).map(s =>
+    `<div>・ ${esc(s.name)}&ensp;<span style="color:var(--gray3)">${s.time}</span></div>`
+  ).join('');
+  const more = songs.length > 6 ? `<div style="color:var(--gray3)">… 他 ${songs.length - 6} 曲</div>` : '';
+  preview.innerHTML = `<span class="prev-count">${songs.length}曲</span>を登録します<br>${listHtml}${more}`;
+  btn.style.display = 'block';
+}
+
+function bulkRegister() {
+  const lines = parsePasteLines(document.getElementById('paste-area').value);
+  if (lines.length === 0) return;
+  lines.forEach((cols, i) => master.push(buildSong(cols, i)));
+  saveMaster();
+  renderMaster();
+  document.getElementById('paste-area').value = '';
+  document.getElementById('paste-preview').innerHTML = '';
+  document.getElementById('btn-bulk').style.display = 'none';
+  togglePaste();
+  alert(`${lines.length}曲を登録しました！`);
+}
+
+/* ---- マスター ---- */
+function formKey(e) {
+  if (e.key === 'Enter') addMaster();
+}
+
+function addMaster() {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name) { document.getElementById('inp-name').focus(); return; }
+  const timeStr = document.getElementById('inp-time').value.trim();
+  const secs = parseSecs(timeStr);
+  const display = secs ? fmt(secs) : (timeStr || '–');
+  master.push({ id: Date.now()+'', name, album: document.getElementById('inp-album').value.trim(), time: display, secs });
+  saveMaster();
+  ['inp-name','inp-album','inp-time'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('inp-name').focus();
+  renderMaster();
+}
+
+function deleteMaster(id) {
+  if (!confirm('この曲をマスターから削除しますか？')) return;
+  master = master.filter(s => s.id !== id);
+  saveMaster();
+  renderMaster();
+}
+
+function addToSet(id, btn) {
+  const s = master.find(m => m.id === id);
+  if (!s) return;
+  setlist.push({ type:'song', id:s.id, name:s.name, album:s.album, time:s.time, secs:s.secs });
+  saveSetlist();
+  renderSet();
+  // フラッシュフィードバック
+  btn.textContent = '✓ 追加済';
+  btn.classList.add('flash');
+  setTimeout(() => { btn.textContent = '+ セットへ'; btn.classList.remove('flash'); }, 1200);
+}
+
+function saveMaster() {
+  localStorage.setItem('ss_master_v1', JSON.stringify(master));
+}
+
+function setSort(mode) {
+  sortMode = mode;
+  ['default','name','album','time'].forEach(m => {
+    document.getElementById('sort-'+m).classList.toggle('active', m===mode);
+  });
+  renderMaster();
+}
+
+function getSorted() {
+  const arr = [...master];
+  if (sortMode === 'name')  arr.sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+  if (sortMode === 'album') arr.sort((a,b) => (a.album||'').localeCompare(b.album||'', 'ja') || a.name.localeCompare(b.name, 'ja'));
+  if (sortMode === 'time')  arr.sort((a,b) => b.secs - a.secs);
+  return arr;
+}
+
+function renderMaster() {
+  const body = document.getElementById('master-body');
+  document.getElementById('master-count').textContent = master.length+'曲';
+  if (master.length === 0) {
+    body.innerHTML = '<div class="empty-hint">まだ楽曲が登録されていません</div>';
+    return;
+  }
+  const inSet = new Set(setlist.filter(i => i.type==='song').map(i => i.id));
+  body.innerHTML = getSorted().map(s => `
+    <div class="master-row" data-id="${s.id}">
+      <div class="master-info">
+        <div class="master-name">${inSet.has(s.id) ? '<span class="in-set-dot"></span>' : ''}${esc(s.name)}</div>
+        <div class="master-meta">${esc(s.album)||'—'} &nbsp;·&nbsp; ${s.time||'–'}</div>
+      </div>
+      <button class="btn-add-set" onclick="addToSet('${s.id}',this)">+ セットへ</button>
+      <button class="btn-edit-master" onclick="editMaster('${s.id}')" title="編集">✏️</button>
+      <button class="btn-del-master" onclick="deleteMaster('${s.id}')">×</button>
+    </div>
+  `).join('');
+}
+
+function editMaster(id) {
+  const s = master.find(m => m.id === id);
+  if (!s) return;
+  const row = document.querySelector(`.master-row[data-id="${id}"]`);
+  if (!row) return;
+  row.classList.add('editing');
+  row.innerHTML = `
+    <div class="master-edit-fields">
+      <input class="master-edit-in" id="ed-name" type="text" placeholder="曲名">
+      <input class="master-edit-in" id="ed-album" type="text" placeholder="アルバム">
+      <input class="master-edit-in" id="ed-time" type="text" placeholder="3:45" style="flex:none;width:68px"
+        onkeydown="if(event.key==='Enter')saveMasterEdit('${id}');if(event.key==='Escape')renderMaster()">
+    </div>
+    <button class="btn-edit-save" onclick="saveMasterEdit('${id}')" title="保存">✓</button>
+    <button class="btn-edit-cancel" onclick="renderMaster()" title="キャンセル">✗</button>
+  `;
+  const nameIn = document.getElementById('ed-name');
+  nameIn.value = s.name;
+  document.getElementById('ed-album').value = s.album || '';
+  document.getElementById('ed-time').value = s.secs ? fmt(s.secs) : '';
+  nameIn.onkeydown = e => {
+    if (e.key === 'Enter') saveMasterEdit(id);
+    if (e.key === 'Escape') renderMaster();
+  };
+  document.getElementById('ed-album').onkeydown = nameIn.onkeydown;
+  nameIn.focus();
+  nameIn.select();
+}
+
+function saveMasterEdit(id) {
+  const s = master.find(m => m.id === id);
+  if (!s) return;
+  const name = document.getElementById('ed-name').value.trim();
+  if (!name) { document.getElementById('ed-name').focus(); return; }
+  const timeStr = document.getElementById('ed-time').value.trim();
+  const secs = parseSecs(timeStr);
+  s.name = name;
+  s.album = document.getElementById('ed-album').value.trim();
+  s.time = secs ? fmt(secs) : (timeStr || '–');
+  s.secs = secs;
+  saveMaster();
+  renderMaster();
+}
+
+function exportData() {
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(master, null, 2));
+  a.download = 'setlist_master.json';
+  a.click();
+}
+
+function importData(e) {
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      master = JSON.parse(ev.target.result);
+      saveMaster();
+      renderMaster();
+    } catch { alert('ファイルの読み込みに失敗しました。'); }
+  };
+  r.readAsText(e.target.files[0]);
+  e.target.value = '';
+}
+
+/* ---- セットリスト ---- */
+function insertMC() {
+  setlist.push({ type:'mc', secs:300 });
+  saveSetlist();
+  renderSet();
+}
+
+function clearSet() {
+  if (setlist.length === 0) return;
+  if (!confirm('セットリストをクリアしますか？')) return;
+  setlist = [];
+  saveSetlist();
+  renderSet();
+}
+
+function removeItem(idx) {
+  setlist.splice(idx, 1);
+  saveSetlist();
+  renderSet();
+}
+
+function setMCDur(idx, val) {
+  setlist[idx].secs = (parseInt(val)||0)*60;
+  saveSetlist();
+  updateStatus();
+}
+
+function saveSetlist() {
+  localStorage.setItem('ss_setlist_v1', JSON.stringify(setlist));
+}
+
+function renderSet() {
+  const body = document.getElementById('setlist-body');
+  if (setlist.length === 0) {
+    body.innerHTML = '<div class="empty-hint">「楽曲登録」タブから曲を追加してください<br>MCは上のボタンで任意の位置に挿入できます</div>';
+    document.getElementById('count-badge').textContent = '—';
+    updateStatus();
+    return;
+  }
+  let songNum = 0, html = '';
+  setlist.forEach((item, idx) => {
+    if (item.type === 'mc') {
+      const mins = Math.round(item.secs/60);
+      html += `<div class="mc-row" draggable="true" data-idx="${idx}"
+        ondragstart="dStart(event,${idx})" ondragover="dOver(event,${idx})"
+        ondrop="dDrop(event,${idx})" ondragleave="dLeave(event)">
+        <span class="drag-handle">⠿</span>
+        <div class="move-btns">
+          <button class="btn-move" onclick="moveItem(${idx},-1)" ${idx===0?'disabled':''}>▲</button>
+          <button class="btn-move" onclick="moveItem(${idx},1)" ${idx===setlist.length-1?'disabled':''}>▼</button>
+        </div>
+        <span class="mc-label">— MC —</span>
+        <input class="mc-input" type="number" min="1" value="${mins}" onchange="setMCDur(${idx},this.value)"> 分
+        <button class="btn-rm" onclick="removeItem(${idx})">×</button>
+      </div>`;
+    } else {
+      songNum++;
+      html += `<div class="song-row" draggable="true" data-idx="${idx}"
+        ondragstart="dStart(event,${idx})" ondragover="dOver(event,${idx})"
+        ondrop="dDrop(event,${idx})" ondragleave="dLeave(event)">
+        <span class="drag-handle">⠿</span>
+        <div class="move-btns">
+          <button class="btn-move" onclick="moveItem(${idx},-1)" ${idx===0?'disabled':''}>▲</button>
+          <button class="btn-move" onclick="moveItem(${idx},1)" ${idx===setlist.length-1?'disabled':''}>▼</button>
+        </div>
+        <span class="song-num">${songNum}</span>
+        <span class="song-name">${esc(item.name)}</span>
+        <span class="song-dur">${item.time||'–'}</span>
+        <button class="btn-rm" onclick="removeItem(${idx})">×</button>
+      </div>`;
+    }
+  });
+  body.innerHTML = html;
+  document.getElementById('count-badge').textContent = songNum+'曲';
+  updateStatus();
+}
+
+function updateStatus() {
+  saveLiveInfo();
+  const total = setlist.reduce((a,i) => a+i.secs, 0);
+  const limit = (parseInt(document.getElementById('limit-in').value)||30)*60;
+  const pct = Math.min(100, Math.round(total/limit*100));
+  const fill = document.getElementById('time-fill');
+  fill.style.width = pct+'%';
+  const over = total > limit;
+  const warn = total > limit*0.85;
+  fill.style.background = over ? '#e63946' : warn ? '#f59e0b' : '#f5c518';
+  document.getElementById('time-used').textContent = fmt(total);
+  const remain = Math.abs(limit - total);
+  const badge = document.getElementById('status-badge');
+  if (over)      badge.innerHTML = `<span class="badge badge-over">+${fmt(remain)} オーバー</span>`;
+  else if (warn) badge.innerHTML = `<span class="badge badge-warn">残り ${fmt(remain)}</span>`;
+  else           badge.innerHTML = `<span class="badge badge-ok">残り ${fmt(remain)}</span>`;
+}
+
+/* ---- ドラッグ&ドロップ ---- */
+function dStart(e, idx) {
+  dragIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => {
+    const el = document.querySelector(`[data-idx="${idx}"]`);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+function dOver(e, idx) {
+  e.preventDefault();
+  document.querySelectorAll('.song-row,.mc-row').forEach(r => r.classList.remove('drag-over'));
+  if (dragIdx !== null && dragIdx !== idx) e.currentTarget.classList.add('drag-over');
+}
+function dLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function dDrop(e, idx) {
+  e.preventDefault();
+  document.querySelectorAll('.song-row,.mc-row').forEach(r => r.classList.remove('drag-over','dragging'));
+  if (dragIdx === null || dragIdx === idx) { dragIdx = null; return; }
+  const moved = setlist.splice(dragIdx, 1)[0];
+  setlist.splice(idx, 0, moved);
+  dragIdx = null;
+  saveSetlist();
+  renderSet();
+}
+
+/* ---- 移動（スマホ用▲▼） ---- */
+function moveItem(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= setlist.length) return;
+  const moved = setlist.splice(idx, 1)[0];
+  setlist.splice(newIdx, 0, moved);
+  saveSetlist();
+  renderSet();
+}
+
+/* ---- 印刷 ---- */
+function doPrint() {
+  const limit = (parseInt(document.getElementById('limit-in').value)||30)*60;
+  const band  = document.getElementById('live-band').value.trim();
+  const venue = document.getElementById('live-venue').value.trim();
+  const dateVal = document.getElementById('live-date').value;
+  const dateStr = dateVal
+    ? new Date(dateVal+'T00:00:00').toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric'})
+    : new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric'});
+
+  let total = 0, songNum = 0, rows = '';
+  setlist.forEach(item => {
+    if (item.type === 'mc') {
+      rows += `<tr class="mc-tr"><td></td><td class="mc-cell">— MC —</td><td class="t-time">${fmt(item.secs)}</td></tr>`;
+      total += item.secs;
+    } else {
+      songNum++;
+      rows += `<tr><td class="t-num">${songNum}</td><td class="t-name">${esc(item.name)}</td><td class="t-time">${item.time||'–'}</td></tr>`;
+      total += item.secs;
+    }
+  });
+
+  const over = total > limit;
+  const remain = Math.abs(limit - total);
+  const statusText = over ? `<span class="over">＋${fmt(remain)} オーバー</span>` : `残り ${fmt(remain)}`;
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<title>Setlist${band ? ' — '+band : ''}</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans JP', sans-serif; max-width: 500px; margin: 36px auto; color: #111; padding: 0 24px; }
+
+  .header { border-bottom: 3px solid #111; padding-bottom: 12px; margin-bottom: 20px; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-end; }
+  h1 { font-family: 'Bebas Neue', sans-serif; font-size: 44px; letter-spacing: 5px; line-height: 1; }
+  .band { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: #444; }
+  .meta { font-size: 12px; color: #888; margin-top: 6px; display: flex; gap: 12px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  tr { border-bottom: 1px solid #e0e0e0; }
+  tr:last-child { border-bottom: none; }
+  td { padding: 11px 6px; font-size: 15px; vertical-align: middle; }
+  .t-num { font-family: 'Bebas Neue', sans-serif; font-size: 22px; width: 28px; color: #bbb; text-align: center; }
+  .t-name { font-weight: 500; }
+  .t-time { text-align: right; font-size: 13px; color: #999; width: 50px; white-space: nowrap; }
+
+  .mc-tr { background: #f7f7f7; }
+  .mc-tr td { padding: 7px 6px; }
+  .mc-cell { font-size: 12px; color: #999; font-style: italic; letter-spacing: 2px; }
+
+  .footer {
+    margin-top: 20px; padding-top: 12px; border-top: 2px solid #111;
+    display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: #666;
+  }
+  .footer .total { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #111; }
+  .over { color: #dc2626; }
+  @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head><body>
+
+<div class="header">
+  <div class="header-top">
+    <h1>SETLIST</h1>
+    ${band ? `<div class="band">${esc(band)}</div>` : ''}
+  </div>
+  <div class="meta">
+    ${dateStr ? `<span>📅 ${dateStr}</span>` : ''}
+    ${venue ? `<span>📍 ${esc(venue)}</span>` : ''}
+    <span>⏱ 持ち時間 ${Math.floor(limit/60)}分</span>
+  </div>
+</div>
+
+<table>${rows}</table>
+
+<div class="footer">
+  <span>合計 <span class="total">${fmt(total)}</span></span>
+  <span>${statusText}</span>
+</div>
+<script>window.onload = () => setTimeout(() => window.print(), 400);<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+init();
+</script>
+</body>
+</html>
